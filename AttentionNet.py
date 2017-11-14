@@ -76,26 +76,26 @@ def AttentionVGG(att='att1', gmode='concat', compatibilityfunction='pc', height=
     
     out=''
     if gmode=='concat':
-        glist=[g1]
+        glist=[g3]
         if att=='att2':
             glist.append(g2)
         if att=='att3':
             glist.append(g2)
-            glist.append(g3)    
-        predictedG=Concatenate(axis=1)([g1,g2,g3])    
+            glist.append(g1)    
+        predictedG=Concatenate(axis=1)(glist)    
         x=Dense(outputclasses)(predictedG)
         out=Activation("relu")(x)
     else:
-        gd1=Dense(outputclasses, activation='relu')(g1)
+        gd3=Dense(outputclasses, activation='relu')(g3)
         if att=='att' or att=='att1':
-            out=gd1
+            out=gd3
         elif att=='att2':
             gd2=Dense(outputclasses, activation='relu')(gd2)
-            out=Add()([gd1,gd2])
+            out=Add()([gd3,gd2])
             out=Lambda(lambda lam: lam/2)(out)
         else:
             gd2=Dense(outputclasses, activation='relu')(gd2)
-            gd3=Dense(outputclasses, activation='relu')(gd3)
+            gd1=Dense(outputclasses, activation='relu')(gd1)
             out=Add()([gd1,gd2,gd3])
             out=Lambda(lambda lam: lam/3)(out)
 

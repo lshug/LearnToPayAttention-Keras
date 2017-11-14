@@ -40,32 +40,38 @@ def AttentionVGG(att='att1', gmode='concat', compatibilityfunction='pc', height=
     x = Flatten(name='flatten')(x)
     g = Dense(512, activation='relu', name='fc1')(x) #batch*512
 
+    height=height//2
+    width=width//2
     l1=Dense(512)(pool1) #batch*x*y*512
     c1=ParametrisedCompatibility()([l1,g]) #batch*x*y
     if compatibilityfunction=='dp':
         c1=Lambda(lambda lam: K.squeeze(tf.map_fn(lambda xy: K.dot(xy[0], xy[1]),elems=(lam[0],K.expand_dims(lam[1],-1)), dtype=tf.float32),3))([l1,g])  #batch*x*y    
     flatc1=Flatten()(c1) #batch*xy
     a1=Activation('softmax')(flatc1) #batch*xy
-    reshaped1=Lambda(lambda la: K.reshape(K.map_fn(lambda xy: K.map_fn(lambda lam: K.reshape(lam,[-1]),elems=(xy),dtype=tf.float32),elems=(K.reshape(la,[-1,512,height//2,width//2])),dtype=tf.float32),[-1,(height//2)*(width//2),512]))(l1) #batch*xy*512. 
+    reshaped1=Lambda(lambda la: K.reshape(K.map_fn(lambda xy: K.map_fn(lambda lam: K.reshape(lam,[-1]),elems=(xy),dtype=tf.float32),elems=(K.reshape(la,[-1,512,height,width])),dtype=tf.float32),[-1,height*width,512]))(l1) #batch*xy*512. 
     g1=Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0],1),lam[1]),1), name="g1")([a1,reshaped1]) #batch*512.
             
     
+    height=height//2
+    width=width//2
     l2=Dense(512)(pool2)
     c2=ParametrisedCompatibility()([l2,g])
     if compatibilityfunction=='dp':
         c2=Lambda(lambda lam: K.squeeze(tf.map_fn(lambda xy: K.dot(xy[0], xy[1]),elems=(lam[0],K.expand_dims(lam[1],-1)), dtype=tf.float32),3))([l2,g])
     flatc2=Flatten()(c2)
     a2=Activation('softmax')(flatc2) 
-    reshaped2=Lambda(lambda la: K.reshape(K.map_fn(lambda xy: K.map_fn(lambda lam: K.reshape(lam,[-1]),elems=(xy),dtype=tf.float32),elems=(K.reshape(la,[-1,512,height//4,width//4])),dtype=tf.float32),[-1,(height//4)*(width//4),512]))(l2)
+    reshaped2=Lambda(lambda la: K.reshape(K.map_fn(lambda xy: K.map_fn(lambda lam: K.reshape(lam,[-1]),elems=(xy),dtype=tf.float32),elems=(K.reshape(la,[-1,512,height,width])),dtype=tf.float32),[-1,height*width,512]))(l2)
     g2=Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0],1),lam[1]),1))([a2,reshaped2])
     
+    height=height//2
+    width=width//2
     l3=Dense(512)(pool3)
     c3=ParametrisedCompatibility()([l3,g])
     if compatibilityfunction=='dp':
         c3=Lambda(lambda lam: K.squeeze(tf.map_fn(lambda xy: K.dot(xy[0], xy[1]),elems=(lam[0],K.expand_dims(lam[1],-1)), dtype=tf.float32),3))([l3,g])    
     flatc3=Flatten()(c3)
     a3=Activation('softmax')(flatc3) 
-    reshaped3=Lambda(lambda la: K.reshape(K.map_fn(lambda xy: K.map_fn(lambda lam: K.reshape(lam,[-1]),elems=(xy),dtype=tf.float32),elems=(K.reshape(la,[-1,512,height//8,width//8])),dtype=tf.float32),[-1,(height//8)*(width//8),512]))(l3) 
+    reshaped3=Lambda(lambda la: K.reshape(K.map_fn(lambda xy: K.map_fn(lambda lam: K.reshape(lam,[-1]),elems=(xy),dtype=tf.float32),elems=(K.reshape(la,[-1,512,height,width])),dtype=tf.float32),[-1,height*width,512]))(l3) 
     g3=Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0],1),lam[1]),1))([a3,reshaped3])
     
     out=''

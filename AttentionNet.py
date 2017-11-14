@@ -93,7 +93,6 @@ def AttentionVGG(att='att1', gmode='concat', compatibilityfunction='pc', height=
             out=Add()([gd1,gd2,gd3])
             out=Lambda(lambda lam: lam/3)(out)
 
-    out=Activation("relu")(x)
     model = Model(inputs=inp, outputs=out)
     model.compile(optimizer='rmsprop',loss='categorical_crossentropy',metrics=['accuracy'])
     return model

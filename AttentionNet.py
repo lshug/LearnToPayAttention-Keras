@@ -84,12 +84,12 @@ def AttentionVGG(att='att1', gmode='concat', compatibilityfunction='pc', height=
         if att=='att' or att=='att1':
             out=gd1
         elif att=='att2':
-            gd2=Dense(outputclasses, activatin='relu')(gd2)
+            gd2=Dense(outputclasses, activation='relu')(gd2)
             out=Add()([gd1,gd2])
             out=Lambda(lambda lam: lam/2)(out)
         else:
-            gd2=Dense(outputclasses, activatin='relu')(gd2)
-            gd3=Dense(outputclasses, activatin='relu')(gd3)
+            gd2=Dense(outputclasses, activation='relu')(gd2)
+            gd3=Dense(outputclasses, activation='relu')(gd3)
             out=Add()([gd1,gd2,gd3])
             out=Lambda(lambda lam: lam/3)(out)
 

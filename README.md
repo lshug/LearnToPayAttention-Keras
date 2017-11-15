@@ -1,2 +1,2 @@
 # AttentionNet-Keras
-Keras implementation of the Learn to Pay Attention model.
+Keras implementation of the Learn to Pay Attention model. TensorFlow backend.

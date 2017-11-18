@@ -20,29 +20,27 @@ def AttentionVGG(att='att1', gmode='concat', compatibilityfunction='pc', height=
 
     x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv1')(x)
     x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv2')(x)
-    x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3')(x)
-    pool1 = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(x) #batch*x*y*channel  
+    local1 = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3')(x)
+    x = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(local1) #batch*x*y*channel  
 
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv1')(pool1)
+    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv1')(x)
     x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv2')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv3')(x)
-    pool2 = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(x) 
+    local2 = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv3')(x)
+    x = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(local2) 
 
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv1')(pool2)
+    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv1')(x)
     x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv2')(x)
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3')(x)
-    pool3 = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(x) 
+    local3 = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3')(x)
+    x = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(local3) 
 
-    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block6_conv1')(pool3)
+    x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block6_conv1')(x)
     x = MaxPooling2D((2, 2), strides=(2, 2), name='block6_pool1')(x)
     x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block6_conv2')(x)
     x = MaxPooling2D((2, 2), strides=(2, 2), name='block6_pool2')(x)
     x = Flatten(name='flatten')(x)
     g = Dense(512, activation='relu', name='fc1')(x) #batch*512
 
-    height=height//2
-    width=width//2
-    l1=Dense(512)(pool1) #batch*x*y*512
+    l1=Dense(512)(local1) #batch*x*y*512
     c1=ParametrisedCompatibility()([l1,g]) #batch*x*y
     if compatibilityfunction=='dp':
         c1=Lambda(lambda lam: K.squeeze(tf.map_fn(lambda xy: K.dot(xy[0], xy[1]),elems=(lam[0],K.expand_dims(lam[1],-1)), dtype=tf.float32),3))([l1,g])  #batch*x*y    
@@ -54,7 +52,7 @@ def AttentionVGG(att='att1', gmode='concat', compatibilityfunction='pc', height=
     
     height=height//2
     width=width//2
-    l2=Dense(512)(pool2)
+    l2=local2
     c2=ParametrisedCompatibility()([l2,g])
     if compatibilityfunction=='dp':
         c2=Lambda(lambda lam: K.squeeze(tf.map_fn(lambda xy: K.dot(xy[0], xy[1]),elems=(lam[0],K.expand_dims(lam[1],-1)), dtype=tf.float32),3))([l2,g])
@@ -65,7 +63,7 @@ def AttentionVGG(att='att1', gmode='concat', compatibilityfunction='pc', height=
     
     height=height//2
     width=width//2
-    l3=Dense(512)(pool3)
+    l3=local3
     c3=ParametrisedCompatibility()([l3,g])
     if compatibilityfunction=='dp':
         c3=Lambda(lambda lam: K.squeeze(tf.map_fn(lambda xy: K.dot(xy[0], xy[1]),elems=(lam[0],K.expand_dims(lam[1],-1)), dtype=tf.float32),3))([l3,g])    
@@ -76,13 +74,15 @@ def AttentionVGG(att='att1', gmode='concat', compatibilityfunction='pc', height=
     
     out=''
     if gmode=='concat':
-        glist=[g3]
+        glist=[g1]
         if att=='att2':
             glist.append(g2)
         if att=='att3':
             glist.append(g2)
             glist.append(g1)    
-        predictedG=Concatenate(axis=1)(glist)    
+        predictedG=g1
+        if att!='att1' and att!='att2':
+            predictedG=Concatenate(axis=1)(glist)    
         x=Dense(outputclasses)(predictedG)
         out=Activation("softmax")(x)
     else:
@@ -90,17 +90,19 @@ def AttentionVGG(att='att1', gmode='concat', compatibilityfunction='pc', height=
         if att=='att' or att=='att1':
             out=gd3
         elif att=='att2':
-            gd2=Dense(outputclasses, activation='sotfmax')(gd2)
+            gd2=Dense(outputclasses, activation='sotfmax')(g2)
             out=Add()([gd3,gd2])
             out=Lambda(lambda lam: lam/2)(out)
         else:
-            gd2=Dense(outputclasses, activation='softmax')(gd2)
-            gd1=Dense(outputclasses, activation='softmax')(gd1)
+            gd2=Dense(outputclasses, activation='softmax')(g2)
+            gd1=Dense(outputclasses, activation='softmax')(g1)
             out=Add()([gd1,gd2,gd3])
             out=Lambda(lambda lam: lam/3)(out)
 
     model = Model(inputs=inp, outputs=out)
     model.compile(optimizer='rmsprop',loss='categorical_crossentropy',metrics=['accuracy'])
+    
+    print(("Generated (VGG-"+att+")-"+gmode+"-"+compatibilityfunction).replace('att)','att1)'))
     return model
 class ParametrisedCompatibility(Layer):
     
@@ -118,4 +120,4 @@ class ParametrisedCompatibility(Layer):
         return (input_shape[0][0], input_shape[0][1], input_shape[0][2])
 
 if __name__ == "__main__":
-    a=AttentionVGG(att='att1', gmode='concat', compatibilityfunction='pc', height=32, width=32, channels=3, outputclasses=100)
+    a=AttentionVGG(att='att', gmode='concat', compatibilityfunction='pc', height=32, width=32, channels=3, outputclasses=100)

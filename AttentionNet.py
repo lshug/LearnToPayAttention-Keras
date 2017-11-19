@@ -23,8 +23,8 @@ def AttentionVGG(att='att1', gmode='concat', compatibilityfunction='pc', height=
 
     x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv1', kernel_regularizer=regularizer)(x)
     x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv2', kernel_regularizer=regularizer)(x)
-    local1 = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3', kernel_regularizer=regularizer)(x)
-    x = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(local1) #batch*x*y*channel  
+    local1 = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3', kernel_regularizer=regularizer)(x) #batch*x*y*channel 
+    x = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(local1)  
 
     x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv1', kernel_regularizer=regularizer)(x)
     x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv2', kernel_regularizer=regularizer)(x)
@@ -77,7 +77,7 @@ def AttentionVGG(att='att1', gmode='concat', compatibilityfunction='pc', height=
     
     out=''
     if gmode=='concat':
-        glist=[g1]
+        glist=[g3]
         if att=='att2':
             glist.append(g2)
         if att=='att3':

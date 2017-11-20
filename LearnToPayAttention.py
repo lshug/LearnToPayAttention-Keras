@@ -1,7 +1,3 @@
-import numpy as np
-import tensorflow as tf
-import keras
-import os
 from keras import backend as K
 from keras.models import Model
 from keras.engine.topology import Layer
@@ -9,14 +5,18 @@ from keras.layers import Input
 from keras.layers.core import Dense, Lambda, Activation, Flatten
 from keras.layers.convolutional import Conv2D
 from keras.layers.merge import Concatenate, Add
-from keras.layers.pooling import MaxPooling2D
-from keras.callbacks import LearningRateScheduler, ModelCheckpoint, LambdaCallback, TensorBoard
+from keras.layers.pooling import MaxPooling2D, AveragePooling2D
+from keras.layers.normalization import BatchNormalization
+from keras.regularizers import l2
+from keras.callbacks import Callback, LearningRateScheduler, ModelCheckpoint, LambdaCallback, TensorBoard
+from keras.optimizers import SGD
+import os
 
 
 class AttentionVGG:
-    def __init__(self, att='att1', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=100, weight_decay=0.005):
+    def __init__(self, att='att1', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=100, weight_decay=0.005, optimizer=SGD(lr=1, momentum=0.9, decay=0.0000001, nesterov=False), loss='categorical_crossentropy', metrics=['accuracy']):
         inp = Input(shape=(height, width, channels))
-        regularizer = keras.regularizers.l2(weight_decay)
+        regularizer = l2(weight_decay)
 
         x = Conv2D(64, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv1')(inp)
         x = Conv2D(64, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv2')(x)
@@ -49,10 +49,10 @@ class AttentionVGG:
         l1 = Dense(512, kernel_regularizer=regularizer, name='l1connectordense')(local1)  # batch*x*y*512
         c1 = ParametrisedCompatibility(kernel_regularizer=regularizer, name='cpc1')([l1, g])  # batch*x*y
         if compatibilityfunction == 'dp':
-            c1 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype=tf.float32), 3), name='cdp1')([l1, g])  # batch*x*y
+            c1 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp1')([l1, g])  # batch*x*y
         flatc1 = Flatten(name='flatc1')(c1)  # batch*xy
         a1 = Activation('softmax', name='softmax1')(flatc1)  # batch*xy
-        reshaped1 = Lambda(lambda la: K.map_fn(lambda lam: K.reshape(lam, [-1, 512]), elems=[la], dtype=tf.float32), name='reshape1')(l1)  # batch*xy*512.
+        reshaped1 = Lambda(lambda la: K.map_fn(lambda lam: K.reshape(lam, [-1, 512]), elems=[la], dtype='float32'), name='reshape1')(l1)  # batch*xy*512.
         g1 = Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0], 1), lam[1]), 1), name='g1')([a1, reshaped1])  # batch*512.
 
         height = height//2
@@ -60,10 +60,10 @@ class AttentionVGG:
         l2 = local2
         c2 = ParametrisedCompatibility(kernel_regularizer=regularizer, name='cpc2')([l2, g])
         if compatibilityfunction == 'dp':
-            c2 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype=tf.float32), 3), name='cdp2')([l2, g])
+            c2 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp2')([l2, g])
         flatc2 = Flatten(name='flatc2')(c2)
         a2 = Activation('softmax', name='softmax2')(flatc2)
-        reshaped2 = Lambda(lambda la: K.map_fn(lambda lam: K.reshape(lam, [-1, 512]), elems=[la], dtype=tf.float32), name='reshape2')(l2)
+        reshaped2 = Lambda(lambda la: K.map_fn(lambda lam: K.reshape(lam, [-1, 512]), elems=[la], dtype='float32'), name='reshape2')(l2)
         g2 = Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0], 1), lam[1]), 1), name='g2')([a2, reshaped2])
 
         height = height//2
@@ -71,10 +71,10 @@ class AttentionVGG:
         l3 = local3
         c3 = ParametrisedCompatibility(kernel_regularizer=regularizer, name='cpc3')([l3, g])
         if compatibilityfunction == 'dp':
-            c3 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype=tf.float32), 3), name='cdp3')([l3, g])
+            c3 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp3')([l3, g])
         flatc3 = Flatten(name='flatc3')(c3)
         a3 = Activation('softmax', name='softmax3')(flatc3)
-        reshaped3 = Lambda(lambda la: K.map_fn(lambda lam: K.reshape(lam, [-1, 512]), elems=[la], dtype=tf.float32), name='reshape3')(l3)
+        reshaped3 = Lambda(lambda la: K.map_fn(lambda lam: K.reshape(lam, [-1, 512]), elems=[la], dtype='float32'), name='reshape3')(l3)
         g3 = Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0], 1), lam[1]), 1), name='g3')([a3, reshaped3])
 
         out = ''
@@ -95,7 +95,7 @@ class AttentionVGG:
             if att == 'att' or att == 'att1':
                 out = gd3
             elif att == 'att2':
-                gd2 = Dense(outputclasses, activation='sotfmax', kernel_regularizer=regularizer, name=str(outputclasses)+'indepsoftmaxg2')(g2)
+                gd2 = Dense(outputclasses, activation='softmax', kernel_regularizer=regularizer, name=str(outputclasses)+'indepsoftmaxg2')(g2)
                 out = Add()([gd3, gd2], name='addg3g2')
                 out = Lambda(lambda lam: lam/2, name='2average')(out)
             else:
@@ -105,7 +105,7 @@ class AttentionVGG:
                 out = Lambda(lambda lam: lam/3, name='3average')(out)
 
         model = Model(inputs=inp, outputs=out)
-        model.compile(optimizer=keras.optimizers.SGD(lr=1, momentum=0.9, decay=0.0000001, nesterov=False), loss='categorical_crossentropy', metrics=['accuracy'])
+        model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
         name = ("(VGG-"+att+")-"+gmode+"-"+compatibilityfunction).replace('att)', 'att1)')
         print("Generated "+name)
         self.name = name
@@ -117,6 +117,7 @@ class AttentionVGG:
         pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+self.datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+datasetname in x]))
         if pastepochs:
             if max(pastepochs) == 300:
+                
                 print("Found completely trained weights for "+self.name+"-"+self.datasetname)
                 return
             self.model.load_weights("weights/"+self.name+"-"+self.datasetname+" "+str(max(pastepochs))+".hdf5")
@@ -128,7 +129,7 @@ class AttentionVGG:
         checkpoint = ModelCheckpoint("weights/"+self.name+"-"+self.datasetname+" {epoch}.hdf5", save_weights_only=True)
         epochprint = LambdaCallback(on_epoch_end=lambda epoch, logs: print("Passed epoch "+str(epoch)))
         callbackslist = [scheduler, checkpoint, epochprint, tboardcb]
-        self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch)
+        self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=False)
         return self.model
 
     def transfer_schedule(epoch):
@@ -164,13 +165,13 @@ class ParametrisedCompatibility(Layer):
         super(ParametrisedCompatibility, self).build(input_shape)
 
     def call(self, x):  # add l and g together with map_fn. Dot the sum with u.
-        return K.dot(K.map_fn(lambda lam: lam[0]+lam[1], elems=(x), dtype=tf.float32), self.u)
+        return K.dot(K.map_fn(lambda lam: lam[0]+lam[1], elems=(x), dtype='float32'), self.u)
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0][0], input_shape[0][1], input_shape[0][2])
 
 
-class LearningRateScaler(keras.callbacks.Callback):
+class LearningRateScaler(Callback):
 
     def __init__(self, epochs, multiplier):
         self.multiplier = multiplier

@@ -3,7 +3,7 @@ import numpy as np
 import scipy.io as sio
 from keras.datasets import cifar10
 from keras.datasets import cifar100
-
+import cv2
 
 if __name__ == "__main__":
     

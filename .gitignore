@@ -1,3 +1,5 @@
 /weights
 /logs
 svhn.mat
+cubclassArr.npy
+cubimgArr.npy

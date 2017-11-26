@@ -1,8 +1,8 @@
 import cv2
 import numpy as np
-from tempfile import TemporaryFile
+import os
 
-
+os.chdir("cub2002011")
 image = open('images.txt', 'r')
 bbox = open('bounding_boxes.txt', 'r')
 
@@ -31,5 +31,8 @@ for line in image:
 #Convert to numpy array and save to file
 images = np.array(images)
 clases = np.array(classes)
-np.save("imgArr", images)
-np.save("classArr", classes)
+
+os.chdir("..")
+
+np.save("cubimgArr", images)
+np.save("cubclassArr", classes)

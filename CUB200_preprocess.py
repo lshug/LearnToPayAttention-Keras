@@ -8,7 +8,7 @@ bbox = open('bounding_boxes.txt', 'r')
 
 images = []
 classes = []
-i = 1;
+i = 1
 for line in image:
 	# Extract bounding box conditions
 	split = [int(float(x))for x in bbox.readline().split()]

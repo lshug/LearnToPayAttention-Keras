@@ -129,7 +129,7 @@ class AttentionVGG:
         checkpoint = ModelCheckpoint("weights/"+self.name+"-"+self.datasetname+" {epoch}.hdf5", save_weights_only=True)
         epochprint = LambdaCallback(on_epoch_end=lambda epoch, logs: print("Passed epoch "+str(epoch)))
         callbackslist = [scheduler, checkpoint, epochprint, tboardcb]
-        self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=False)
+        self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=transfer)
         return self.model
 
     def transfer_schedule(epoch):

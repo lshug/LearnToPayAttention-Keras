@@ -31,7 +31,5 @@ for line in image:
 #Convert to numpy array and save to file
 images = np.array(images)
 clases = np.array(classes)
-imagesfile = "imgArr"
-classesfile = "classArr"
-np.save(imagesfile, images)
-np.save(classesfile, classes)
+np.save("imgArr", images)
+np.save("classArr", classes)

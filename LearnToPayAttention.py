@@ -2,7 +2,7 @@ from keras import backend as K
 from keras.models import Model
 from keras.engine.topology import Layer
 from keras.layers import Input
-from keras.layers.core import Dense, Lambda, Activation, Flatten
+from keras.layers.core import Dense, Lambda, Activation, Flatten, Reshape
 from keras.layers.convolutional import Conv2D
 from keras.layers.merge import Concatenate, Add
 from keras.layers.pooling import MaxPooling2D, AveragePooling2D
@@ -52,7 +52,7 @@ class AttentionVGG:
             c1 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp1')([l1, g])  # batch*x*y
         flatc1 = Flatten(name='flatc1')(c1)  # batch*xy
         a1 = Activation('softmax', name='softmax1')(flatc1)  # batch*xy
-        reshaped1 = Lambda(lambda la: K.map_fn(lambda lam: K.reshape(lam, [-1, 512]), elems=[la], dtype='float32'), name='reshape1')(l1)  # batch*xy*512.
+        reshaped1 = Reshape((-1,512), name='reshape1')(l1)  # batch*xy*512.
         g1 = Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0], 1), lam[1]), 1), name='g1')([a1, reshaped1])  # batch*512.
 
         height = height//2
@@ -63,7 +63,7 @@ class AttentionVGG:
             c2 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp2')([l2, g])
         flatc2 = Flatten(name='flatc2')(c2)
         a2 = Activation('softmax', name='softmax2')(flatc2)
-        reshaped2 = Lambda(lambda la: K.map_fn(lambda lam: K.reshape(lam, [-1, 512]), elems=[la], dtype='float32'), name='reshape2')(l2)
+        reshaped2 =  Reshape((-1,512), name='reshape2')(l2)
         g2 = Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0], 1), lam[1]), 1), name='g2')([a2, reshaped2])
 
         height = height//2
@@ -74,7 +74,7 @@ class AttentionVGG:
             c3 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp3')([l3, g])
         flatc3 = Flatten(name='flatc3')(c3)
         a3 = Activation('softmax', name='softmax3')(flatc3)
-        reshaped3 = Lambda(lambda la: K.map_fn(lambda lam: K.reshape(lam, [-1, 512]), elems=[la], dtype='float32'), name='reshape3')(l3)
+        reshaped3 = Reshape((-1,512), name='reshape3')(l3)
         g3 = Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0], 1), lam[1]), 1), name='g3')([a3, reshaped3])
 
         out = ''

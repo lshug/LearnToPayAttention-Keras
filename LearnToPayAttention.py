@@ -161,81 +161,97 @@ class AttentionRN:
         regularizer = keras.regularizers.l2(weight_decay)
         self.datasetname = datasetname
 
+        x = BatchNormalization()(inp)
 
-        #block1, out batch*(x/2)*(y/2)*16
-        x = Conv2D(16, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='block1conv1')(inp)
+        #block1, out batch*(x)*(y)*16
+        x = Conv2D(16, (3, 3), padding='same', kernel_regularizer=regularizer, name='block1conv1')(x)
+        x = BatchNormalization()(x)
+        x = Activation('relu')(x)
         x = Conv2D(16, (3, 3), padding='same', kernel_regularizer=regularizer, name='block1conv2')(x) #batch*x*y*16
-        block1 = MaxPooling2D((3, 3), strides=(2, 2), name='block1pool')(x)
-        x = block1
+        x = BatchNormalization()(x)
         
-        #block2, out batch*(x/4)*(y/4)*128
+        #block2, out batch*(x/2)*(y/2)*64
         for i in range(0,18):
             identity = x
             if i == 0:
-                identity=Conv2D(128,(1,1), padding='same', kernel_regularizer=regularizer, name='block2dimchangeconv')(identity)
-            x = Conv2D(16, (1, 1), activation='relu', padding='same', kernel_regularizer=regularizer, name='block2resblock'+str((i+1))+'conv1')(x)
-            x = Conv2D(16, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='block2resblock'+str((i+1))+'conv2')(x)
-            x = Conv2D(128, (1, 1), padding='same', kernel_regularizer=regularizer, name='block2resblock'+str((i+1))+'conv3')(x)
-            x = Add(name='block2resblock'+str((i+1))+'add')([identity,x])
-            x = Activation('relu', name='block2resblock'+str((i+1))+'ReLU')(x)
-        local1 = x #15x15 resolution
+                identity=Conv2D(64,(2,2), padding='same', kernel_regularizer=regularizer, name='block2dimchangeconv')(identity)
+            x = Conv2D(16, (1, 1), padding='same', kernel_regularizer=regularizer, name='block2resblock'+str((i+1))+'conv1')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(16, (3, 3), padding='same', kernel_regularizer=regularizer, name='block2resblock'+str((i+1))+'conv2')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(64, (1, 1), padding='same', kernel_regularizer=regularizer, name='block2resblock'+str((i+1))+'conv3')(x)
+            x = BatchNormalization()(x)
+            x = Add()([identity,x])
+            x = Activation('relu')(x)
+        l1 = x #16 filters, 32x32 resolution
         x = MaxPooling2D((2, 2), strides=(2, 2), name='block2pool')(x)
 
-        #block3, out batch*(x/8)*(y/8)*256
+        #block3, out batch*(x/4)*(y/4)*128
         for i in range(0,18):
             identity = x
             if i == 0:
-                identity=Conv2D(256, (1,1), padding='same', kernel_regularizer=regularizer, name='block3dimchangeconv')(identity)            
-            x = Conv2D(64, (1, 1), activation='relu', padding='same', kernel_regularizer=regularizer, name='block3resblock'+str((i+1))+'conv1')(x)
-            x = Conv2D(64, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='block3resblock'+str((i+1))+'conv2')(x)
-            x = Conv2D(256, (1, 1), padding='same', kernel_regularizer=regularizer, name='block3resblock'+str((i+1))+'conv3')(x)
-            x = Add(name='block3resblock'+str((i+1))+'add')([identity,x])
-            x = Activation('relu', name='block3resblock'+str((i+1))+'ReLU')(x)
-        local2 = x #7x7 resolution
+                identity=Conv2D(128, (2,2), padding='same', kernel_regularizer=regularizer, name='block3dimchangeconv')(identity)            
+            x = Conv2D(32, (1, 1), padding='same', kernel_regularizer=regularizer, name='block3resblock'+str((i+1))+'conv1')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(32, (3, 3), padding='same', kernel_regularizer=regularizer, name='block3resblock'+str((i+1))+'conv2')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(128, (1, 1), padding='same', kernel_regularizer=regularizer, name='block3resblock'+str((i+1))+'conv3')(x)
+            x = BatchNormalization()(x)
+            x = Add()([identity,x])
+            x = Activation('relu')(x)
+        l2 = x #256 filters, 16x16 resolution
         x = MaxPooling2D((2, 2), strides=(2, 2), name='block3pool')(x)
 
-        #block4, out batch*(x/16)*(y/16)*512
+        #block4, out batch*(x/4)*(y/4)*256
         for i in range(0,18):
             identity = x
             if i == 0:
-                identity=Conv2D(512, (1,1), padding='same', kernel_regularizer=regularizer, name='block4dimchangeconv')(identity)            
-            x = Conv2D(128, (1, 1), activation='relu', padding='same', kernel_regularizer=regularizer, name='block4resblock'+str((i+1))+'conv1')(x)
-            x = Conv2D(128, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='block4resblock'+str((i+1))+'conv2')(x)
-            x = Conv2D(512, (1, 1), padding='same', kernel_regularizer=regularizer, name='block4resblock'+str((i+1))+'conv3')(x)
-            x = Add(name='block4resblock'+str((i+1))+'add')([identity,x])
-            x = Activation('relu', name='block4resblock'+str((i+1))+'ReLU')(x)
-        local3 = x #3x3 resolution
+                identity=Conv2D(256, (2,2), padding='same', kernel_regularizer=regularizer, name='block4dimchangeconv')(identity)            
+            x = Conv2D(64, (1, 1), padding='same', kernel_regularizer=regularizer, name='block4resblock'+str((i+1))+'conv1')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(64, (3, 3), padding='same', kernel_regularizer=regularizer, name='block4resblock'+str((i+1))+'conv2')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(256, (1, 1), padding='same', kernel_regularizer=regularizer, name='block4resblock'+str((i+1))+'conv3')(x)
+            x = BatchNormalization()(x)
+            x = Add()([identity,x])
+            x = Activation('relu')(x)
+        l3 = x #512 filters, 8x8 resolution
         
-        x = Conv2D(256, (3, 3), padding='same', kernel_regularizer=regularizer, name='outconv')(x) #batch*(x/16)*(y/16)*512
-        x = MaxPooling2D((2,2), strides=(2,2), name="gpool")(x) #batch*1*1*255126
-        x = Flatten(name='pregflatten')(x)
-        g = Dense(256, activation='relu', kernel_regularizer=regularizer, name='globalg')(x)
+        x = Conv2D(256, (3, 3), padding='same', kernel_regularizer=regularizer, name='outconv')(x) 
+        x = BatchNormalization()(x)
+        x = MaxPooling2D((2,2), strides=(2,2), name="gpool")(x)
+        gbase = Flatten(name='pregflatten')(x)
+        
+        g64 = Dense(64, kernel_regularizer=regularizer, name='globalg64')(gbase)
+        g128 = Dense(128, kernel_regularizer=regularizer, name='globalg128')(gbase)
+        g256 = Dense(256, kernel_regularizer=regularizer, name='globalg256')(gbase)        
 
-        
-        l1 = Dense(256, kernel_regularizer=regularizer, name='l1connectordense')(local1)  # batch*x*y*256
-        c1 = ParametrisedCompatibility(kernel_regularizer=regularizer, name='cpc1')([l1, g])  # batch*x*y
+
+        c1 = ParametrisedCompatibility(kernel_regularizer=regularizer, name='cpc1')([l1, g64])  # batch*x*y
         if compatibilityfunction == 'dp':
-            c1 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp1')([l1, g])  # batch*x*y
+            c1 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp1')([l1, g64])  # batch*x*y
         flatc1 = Flatten(name='flatc1')(c1)  # batch*xy
         a1 = Activation('softmax', name='softmax1')(flatc1)  # batch*xy
-        reshaped1 = Reshape((-1,256), name='reshape1')(l1)  # batch*xy*256.
+        reshaped1 = Reshape((-1,64), name='reshape1')(l1)  # batch*xy*256.
         g1 = Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0], 1), lam[1]), 1), name='g1')([a1, reshaped1])  # batch*256.
         
-        
-        l2 = local2
-        c2 = ParametrisedCompatibility(kernel_regularizer=regularizer, name='cpc2')([l2, g])
+        c2 = ParametrisedCompatibility(kernel_regularizer=regularizer, name='cpc2')([l2, g128])
         if compatibilityfunction == 'dp':
-            c2 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp2')([l2, g])
+            c2 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp2')([l2, g128])
         flatc2 = Flatten(name='flatc2')(c2)
         a2 = Activation('softmax', name='softmax2')(flatc2)
-        reshaped2 =  Reshape((-1,256), name='reshape2')(l2)
+        reshaped2 =  Reshape((-1,128), name='reshape2')(l2)
         g2 = Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0], 1), lam[1]), 1), name='g2')([a2, reshaped2])
 
-        
-        l3 = Dense(256, kernel_regularizer=regularizer, name='l3connectordense')(local3)
-        c3 = ParametrisedCompatibility(kernel_regularizer=regularizer, name='cpc3')([l3, g])
+        c3 = ParametrisedCompatibility(kernel_regularizer=regularizer, name='cpc3')([l3, g256])
         if compatibilityfunction == 'dp':
-            c3 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp3')([l3, g])
+            c3 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp3')([l3, g256])
         flatc3 = Flatten(name='flatc3')(c3)
         a3 = Activation('softmax', name='softmax3')(flatc3)
         reshaped3 = Reshape((-1,256), name='reshape3')(l3)
@@ -332,3 +348,4 @@ class LearningRateScaler(Callback):
 
 if __name__ == "__main__":
     testmodel = AttentionRN(att='att2', gmode='concat', compatibilityfunction='pc', datasetname="randomset", height=32, width=32, channels=3, outputclasses=10)
+    testmodel = AttentionVGG(att='att2', gmode='concat', compatibilityfunction='pc', datasetname="randomset", height=32, width=32, channels=3, outputclasses=10)

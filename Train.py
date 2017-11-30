@@ -18,14 +18,14 @@ def normalizeDataset(dataset):
 
 if __name__ == "__main__":
     
-    x10 = np.load("x10.npy")
-    x100 = np.load("x100.npy")
-    y10 = np.load("y10.npy")
-    y100 = np.load("y100.npy")
-    xsvhn = np.load("xsvhn.npy")
-    ysvhn = np.load("ysvhn.npy")
-    cubx = np.load("cubimgArr.npy")
-    cuby = np.load("cubclassArr.npy")
+    x10 = np.load("datasets/x10.npy")
+    x100 = np.load("datasets/x100.npy")
+    y10 = np.load("datasets/y10.npy")
+    y100 = np.load("datasets/y100.npy")
+    xsvhn = np.load("datasets/xsvhn.npy")  
+    ysvhn = np.load("datasets/ysvhn.npy")  
+    cubx = np.load("datasets/cubimgArr.npy")  #will have to divide into train/test
+    cuby = np.load("datasets/cubclassArr.npy")  #will have to divide into train/test
     
     vggatt3concatpcCIFAR10 = AttentionVGG(att='att3', gmode='concat', compatibilityfunction='pc', height=32, width=32, channels=3, outputclasses=10).StandardFit("cifar10",x10,y10)
     vggatt3concatpcCIFAR100 = AttentionVGG(att='att3', gmode='concat', compatibilityfunction='pc', height=32, width=32, channels=3, outputclasses=100).StandardFit("cifar100",x100,y100)

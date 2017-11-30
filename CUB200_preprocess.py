@@ -34,5 +34,5 @@ clases = np.array(classes)
 
 os.chdir("..")
 
-np.save("cubimgArr", images)
-np.save("cubclassArr", classes)
+np.save("datasets/cubimgArr", images)
+np.save("datasets/cubclassArr", classes)

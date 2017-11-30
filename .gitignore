@@ -1,5 +1,7 @@
 /weights
 /logs
-svhn.mat
+/datasets
+*.npy
+*.mat
 cubclassArr.npy
 cubimgArr.npy

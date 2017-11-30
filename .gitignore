@@ -1,6 +1,7 @@
 /weights
 /logs
 /datasets
+/cub2002011
 *.npy
 *.mat
 cubclassArr.npy

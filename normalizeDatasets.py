@@ -17,6 +17,9 @@ def normalizeDataset(x):
     whitex = np.dot(flat_x, principal_components)
     return np.reshape(whitex, x.shape)
 
+
+#todo: normalize and save STL-train, STL-test, Caltech-101, Caltech-256, Event-8, Action-40, Scene-67, Object Discovery 
+
 (x10, y10), (x10test, y10test) = cifar10.load_data()
 (x100,y100),(x100test,y100test) = cifar100.load_data(label_mode='fine')
 x10 = np.reshape(x10,[50000,32,32,3])

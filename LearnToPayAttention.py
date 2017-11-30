@@ -58,8 +58,7 @@ class AttentionVGG:
         reshaped1 = Reshape((-1,512), name='reshape1')(l1)  # batch*xy*512.
         g1 = Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0], 1), lam[1]), 1), name='g1')([a1, reshaped1])  # batch*512.
 
-        
-        
+            
         l2 = local2
         c2 = ParametrisedCompatibility(kernel_regularizer=regularizer, name='cpc2')([l2, g])
         if compatibilityfunction == 'dp':
@@ -131,7 +130,14 @@ class AttentionVGG:
         checkpoint = ModelCheckpoint("weights/"+self.name+"-"+self.datasetname+" {epoch}.hdf5", save_weights_only=True)
         epochprint = LambdaCallback(on_epoch_end=lambda epoch, logs: print("Passed epoch "+str(epoch)))
         callbackslist = [scheduler, checkpoint, epochprint, tboardcb]
-        self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=transfer)
+        self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
+        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+self.datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+self.datasetname in x]))
+        if max(pastepochs) > 290:
+            for filenum in range(1,297):  #delete most of the lower weight files
+                try:
+                    os.remove("weights/"+self.name+"-"+self.datasetname+" "+str(filenum)+".hdf5")
+                except OSError:
+                    pass
         return self.model
 
     def transfer_schedule(epoch):
@@ -293,7 +299,7 @@ class AttentionRN:
         self.model = model
     
     def StandardFit(self, X, Y):
-        scheduler = LearningRateScaler(60, 0.2)
+        scheduler = LearningRateScaler([60, 120, 160], 0.2)
         startingepoch = 0
         pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+self.datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+self.datasetname in x]))
         if pastepochs:
@@ -306,10 +312,14 @@ class AttentionRN:
         checkpoint = ModelCheckpoint("weights/"+self.name+"-"+self.datasetname+" {epoch}.hdf5", save_weights_only=True)
         epochprint = LambdaCallback(on_epoch_end=lambda epoch, logs: print("Passed epoch "+str(epoch)))
         callbackslist = [scheduler, checkpoint, epochprint, tboardcb]
-        self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=False) #actually X Y 64 200
+        self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
+        if max(pastepochs) > 290:
+            for filenum in range(1,297):
+                try:
+                    os.remove("weights/"+self.name+"-"+self.datasetname+" "+str(filenum)+".hdf5")
+                except OSError:
+                    pass
         return self.model
-
-
         
 
 class ParametrisedCompatibility(Layer):
@@ -334,13 +344,18 @@ class LearningRateScaler(Callback):
     def __init__(self, epochs, multiplier):
         self.multiplier = multiplier
         self.epochs = epochs
+        
 
     def on_epoch_begin(self, epoch, logs=None):
         if not hasattr(self.model.optimizer, 'lr'):
             raise ValueError('Optimizer must have a "lr" attribute.')
         oldrate = K.get_value(self.model.optimizer.lr)
         lr = oldrate*self.multiplier
-        if epoch > 0 and epoch % self.epochs == 0:
+        if isinstance(self.epochs, list):
+            if epoch>0 and epoch in self.epochs:
+                K.set_value(self.model.optimizer.lr, lr)
+                print("Updated learning rate from "+str(oldrate)+" to "+str(lr)+" on epoch "+str(epoch))    
+        elif epoch > 0 and epoch % self.epochs == 0:
             K.set_value(self.model.optimizer.lr, lr)
             print("Updated learning rate from "+str(oldrate)+" to "+str(lr)+" on epoch "+str(epoch))
 

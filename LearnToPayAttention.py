@@ -20,6 +20,7 @@ class AttentionVGG:
         inp = Input(shape=(height, width, channels))
         regularizer = keras.regularizers.l2(weight_decay)
         self.datasetname = datasetname
+        self.outputclasses=outputclasses
 
         x = Conv2D(64, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv1')(inp)
         x = Conv2D(64, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv2')(x)
@@ -112,7 +113,8 @@ class AttentionVGG:
         self.name = name
         self.model = model
 
-    def StandardFit(self, datasetname=None, X, Y, transfer=False):
+    def StandardFit(self, datasetname=None, X=[], Y=[], transfer=False):
+        Y=tf.one_hot(Y,self.Y)
         if datasetname==None:
             datasetname=self.datasetname
         scheduler = LearningRateScaler(25, 0.5)
@@ -167,7 +169,7 @@ class AttentionRN:
         inp = Input(shape=(height, width, channels)) #batch*x*y*3
         regularizer = keras.regularizers.l2(weight_decay)
         self.datasetname = datasetname
-
+        self.outputclasses=outputclasses
         x = BatchNormalization()(inp)
 
         #block1, out batch*(x)*(y)*16
@@ -299,7 +301,8 @@ class AttentionRN:
         self.name = name
         self.model = model
     
-    def StandardFit(self, datasetna=None, X, Y):
+    def StandardFit(self, datasetname=None, X=[], Y=[]):
+        Y=tf.one_hot(Y,self.Y)
         if datasetname==None:
             datasetname=self.datasetname
         scheduler = LearningRateScaler([60, 120, 160], 0.2)

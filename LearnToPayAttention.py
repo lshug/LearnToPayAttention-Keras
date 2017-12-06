@@ -112,30 +112,31 @@ class AttentionVGG:
         self.name = name
         self.model = model
 
-    def StandardFit(self, X, Y, transfer=False):
+    def StandardFit(self, datasetname=None, X, Y, transfer=False):
+        if datasetname==None:
+            datasetname=self.datasetname
         scheduler = LearningRateScaler(25, 0.5)
         startingepoch = 0
-        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+self.datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+self.datasetname in x]))
-        if pastepochs:
-            if max(pastepochs) == 300:
-                
-                print("Found completely trained weights for "+self.name+"-"+self.datasetname)
+        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+datasetname in x]))
+        if len(pastepochs):
+            if max(pastepochs) == 300:                
+                print("Found completely trained weights for "+self.name+"-"+datasetname)
                 return
-            self.model.load_weights("weights/"+self.name+"-"+self.datasetname+" "+str(max(pastepochs))+".hdf5")
+            self.model.load_weights("weights/"+self.name+"-"+datasetname+" "+str(max(pastepochs))+".hdf5")
             startingepoch = max(pastepochs)
         elif transfer:
             self.model.load_weights("weights/"+self.name+"-cifar100 300.hdf5", by_name=True)
             scheduler = LearningRateScheduler(transfer_schedule)
         tboardcb = TensorBoard(log_dir='./logs', histogram_freq=0, batch_size=3, write_graph=True, write_grads=False, write_images=False, embeddings_freq=0, embeddings_layer_names=None, embeddings_metadata=None)
-        checkpoint = ModelCheckpoint("weights/"+self.name+"-"+self.datasetname+" {epoch}.hdf5", save_weights_only=True)
+        checkpoint = ModelCheckpoint("weights/"+self.name+"-"+datasetname+" {epoch}.hdf5", save_weights_only=True)
         epochprint = LambdaCallback(on_epoch_end=lambda epoch, logs: print("Passed epoch "+str(epoch)))
         callbackslist = [scheduler, checkpoint, epochprint, tboardcb]
         self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
-        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+self.datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+self.datasetname in x]))
+        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+datasetname in x]))
         if max(pastepochs) > 290:
             for filenum in range(1,297):  #delete most of the lower weight files
                 try:
-                    os.remove("weights/"+self.name+"-"+self.datasetname+" "+str(filenum)+".hdf5")
+                    os.remove("weights/"+self.name+"-"+datasetname+" "+str(filenum)+".hdf5")
                 except OSError:
                     pass
         return self.model
@@ -298,25 +299,27 @@ class AttentionRN:
         self.name = name
         self.model = model
     
-    def StandardFit(self, X, Y):
+    def StandardFit(self, datasetna=None, X, Y):
+        if datasetname==None:
+            datasetname=self.datasetname
         scheduler = LearningRateScaler([60, 120, 160], 0.2)
         startingepoch = 0
-        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+self.datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+self.datasetname in x]))
+        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+datasetname in x]))
         if pastepochs:
             if max(pastepochs) == 200:
-                print("Found completely trained weights for "+self.name+"-"+self.datasetname)
+                print("Found completely trained weights for "+self.name+"-"+datasetname)
                 return
-            self.model.load_weights("weights/"+self.name+"-"+self.datasetname+" "+str(max(pastepochs))+".hdf5")
+            self.model.load_weights("weights/"+self.name+"-"+datasetname+" "+str(max(pastepochs))+".hdf5")
             startingepoch = max(pastepochs)
         tboardcb = TensorBoard(log_dir='./logs', histogram_freq=0, batch_size=3, write_graph=True, write_grads=False, write_images=False, embeddings_freq=0, embeddings_layer_names=None, embeddings_metadata=None)
-        checkpoint = ModelCheckpoint("weights/"+self.name+"-"+self.datasetname+" {epoch}.hdf5", save_weights_only=True)
+        checkpoint = ModelCheckpoint("weights/"+self.name+"-"+datasetname+" {epoch}.hdf5", save_weights_only=True)
         epochprint = LambdaCallback(on_epoch_end=lambda epoch, logs: print("Passed epoch "+str(epoch)))
         callbackslist = [scheduler, checkpoint, epochprint, tboardcb]
         self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
         if max(pastepochs) > 290:
             for filenum in range(1,297):
                 try:
-                    os.remove("weights/"+self.name+"-"+self.datasetname+" "+str(filenum)+".hdf5")
+                    os.remove("weights/"+self.name+"-"+datasetname+" "+str(filenum)+".hdf5")
                 except OSError:
                     pass
         return self.model

@@ -1,13 +1,10 @@
 import numpy as np
 import os
 
-#todo: using divide cubimgArr.npy and cubclassArr.npy into xcub.npy, ycub.npy, xcubtest.npy, and ycubtest.npy
 traintestsplit = open('cub2002011/train_test_split.txt', 'r')
 os.chdir('datasets')
 images = np.load('cubimgArr.npy')
 labels = np.load('cubclassArr.npy')
-
-print(labels.shape)
 
 xcub = np.empty([5994, 80, 80, 3])
 ycub = np.empty([5994])

@@ -2,6 +2,7 @@
 /logs
 /datasets
 /cub2002011
+/__pycache__
 *.npy
 *.mat
 cubclassArr.npy

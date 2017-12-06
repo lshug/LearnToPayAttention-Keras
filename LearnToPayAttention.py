@@ -114,7 +114,7 @@ class AttentionVGG:
         self.model = model
 
     def StandardFit(self, datasetname=None, X=[], Y=[], transfer=False):
-        Y=tf.one_hot(Y,self.Y)
+        Y = keras.utils.to_categorical(Y,self.outputclasses)
         if datasetname==None:
             datasetname=self.datasetname
         scheduler = LearningRateScaler(25, 0.5)
@@ -302,7 +302,7 @@ class AttentionRN:
         self.model = model
     
     def StandardFit(self, datasetname=None, X=[], Y=[]):
-        Y=tf.one_hot(Y,self.Y)
+        Y = keras.utils.to_categorical(Y,self.outputclasses)
         if datasetname==None:
             datasetname=self.datasetname
         scheduler = LearningRateScaler([60, 120, 160], 0.2)

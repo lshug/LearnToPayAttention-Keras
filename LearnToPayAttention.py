@@ -135,7 +135,7 @@ class AttentionVGG:
         epochprint = LambdaCallback(on_epoch_end=lambda epoch, logs: print("Passed epoch "+str(epoch)))
         callbackslist = [scheduler, checkpoint, epochprint, tboardcb]
         if beep:
-            callbacklist.append(Beeper(1))
+            callbackslist.append(Beeper(1))
         self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
         pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+datasetname in x]))
         if max(pastepochs) > 290:
@@ -322,7 +322,7 @@ class AttentionRN:
         epochprint = LambdaCallback(on_epoch_end=lambda epoch, logs: print("Passed epoch "+str(epoch)))
         callbackslist = [scheduler, checkpoint, epochprint, tboardcb]
         if beep:
-            callbacklist.append(Beeper(1))
+            callbackslist.append(Beeper(1))
         self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
         if max(pastepochs) > 290:
             for filenum in range(1,297):
@@ -377,10 +377,6 @@ class Beeper(Callback):
     def on_batch_end(self, batch, logs={}):
         if batch > 0 and batch % self.batches == 0:
             winsound.Beep(440,300)
-        
-    def on_epoch_begin(self, epoch, logs=None):
-        
-
 
 
 if __name__ == "__main__":

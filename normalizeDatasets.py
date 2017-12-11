@@ -3,38 +3,28 @@ from keras.datasets import cifar100
 import numpy as np
 import scipy.io as sio
 from scipy import linalg
-import matplotlib.pyplot as plt
+from keras.preprocessing.image import ImageDataGenerator
 
 def normalizeDataset(x):
-    mean=np.reshape(np.mean(x, axis=(0, 1, 2)),[1,1,3])
-    std= np.reshape(np.std(x, axis=(0, 1, 2)),[1,1,3])
-    x=x-mean
-    x=x/(std+1e-08)
-    flat_x = np.reshape(x, (x.shape[0], 3072))
-    sigma = np.dot(flat_x.T, flat_x) / flat_x.shape[0]
-    u, s, _ = linalg.svd(sigma)
-    principal_components = np.dot(np.dot(u, np.diag(1. / np.sqrt(s + 1e-6))), u.T)
-    whitex = np.dot(flat_x, principal_components)
-    return np.reshape(whitex, x.shape)
+    x=x.astype('float32')
+    g = ImageDataGenerator(featurewise_center=True,featurewise_std_normalization=True,zca_epsilon=1e-6,zca_whitening=True)
+    g.fit(x)
+    return g.standardize(x)
 
 
 #todo: normalize and save STL-train, STL-test, Caltech-101, Caltech-256, Event-8, Action-40, Scene-67, Object Discovery 
 
 (x10, y10), (x10test, y10test) = cifar10.load_data()
 (x100,y100),(x100test,y100test) = cifar100.load_data(label_mode='fine')
-x10 = np.reshape(x10,[50000,32,32,3])
-x100 = np.reshape(x100,[50000,32,32,3])
-x10test = np.reshape(x10test,[10000,32,32,3])
-x100test = np.reshape(x100test,[10000,32,32,3])
 svhn_data = sio.loadmat('datasets/svhn.mat')
 xsvhn = svhn_data['X']
 ysvhn = svhn_data['y']
-xsvhn = np.reshape(xsvhn,[73257,32,32,3])
+xsvhn = np.rollaxis(xsvhn,3,-4)
 ysvhn = np.squeeze(ysvhn)
 svhn_data = sio.loadmat('datasets/svhntest.mat')
 xsvhntest = svhn_data['X']
 ysvhntest = svhn_data['y']
-xsvhntest = np.reshape(xsvhntest,[26032,32,32,3])
+xsvhntest = np.rollaxis(xsvhntest,3,-4)
 ysvhntest = np.squeeze(ysvhntest)
 
 x10 = normalizeDataset(x10)

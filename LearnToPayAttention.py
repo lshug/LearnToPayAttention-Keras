@@ -12,6 +12,7 @@ from keras.layers.pooling import MaxPooling2D, AveragePooling2D
 from keras.layers.normalization import BatchNormalization
 from keras.callbacks import Callback, LearningRateScheduler, ModelCheckpoint, LambdaCallback, TensorBoard
 from keras.optimizers import SGD
+import winsound
 import os
 
     
@@ -78,7 +79,7 @@ class AttentionVGG:
         a3 = Activation('softmax', name='softmax3')(flatc3)
         reshaped3 = Reshape((-1,512), name='reshape3')(l3)
         g3 = Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0], 1), lam[1]), 1), name='g3')([a3, reshaped3])
-
+ 
         out = ''
         if gmode == 'concat':
             glist = [g3]
@@ -113,7 +114,7 @@ class AttentionVGG:
         self.name = name
         self.model = model
 
-    def StandardFit(self, datasetname=None, X=[], Y=[], transfer=False):
+    def StandardFit(self, datasetname=None, X=[], Y=[], transfer=False, beep=False):
         Y = keras.utils.to_categorical(Y,self.outputclasses)
         if datasetname==None:
             datasetname=self.datasetname
@@ -133,6 +134,8 @@ class AttentionVGG:
         checkpoint = ModelCheckpoint("weights/"+self.name+"-"+datasetname+" {epoch}.hdf5", save_weights_only=True)
         epochprint = LambdaCallback(on_epoch_end=lambda epoch, logs: print("Passed epoch "+str(epoch)))
         callbackslist = [scheduler, checkpoint, epochprint, tboardcb]
+        if beep:
+            callbacklist.append(Beeper(1))
         self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
         pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+datasetname in x]))
         if max(pastepochs) > 290:
@@ -301,7 +304,7 @@ class AttentionRN:
         self.name = name
         self.model = model
     
-    def StandardFit(self, datasetname=None, X=[], Y=[]):
+    def StandardFit(self, datasetname=None, X=[], Y=[], beep=False):
         Y = keras.utils.to_categorical(Y,self.outputclasses)
         if datasetname==None:
             datasetname=self.datasetname
@@ -318,6 +321,8 @@ class AttentionRN:
         checkpoint = ModelCheckpoint("weights/"+self.name+"-"+datasetname+" {epoch}.hdf5", save_weights_only=True)
         epochprint = LambdaCallback(on_epoch_end=lambda epoch, logs: print("Passed epoch "+str(epoch)))
         callbackslist = [scheduler, checkpoint, epochprint, tboardcb]
+        if beep:
+            callbacklist.append(Beeper(1))
         self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
         if max(pastepochs) > 290:
             for filenum in range(1,297):
@@ -351,7 +356,6 @@ class LearningRateScaler(Callback):
         self.multiplier = multiplier
         self.epochs = epochs
         
-
     def on_epoch_begin(self, epoch, logs=None):
         if not hasattr(self.model.optimizer, 'lr'):
             raise ValueError('Optimizer must have a "lr" attribute.')
@@ -364,6 +368,18 @@ class LearningRateScaler(Callback):
         elif epoch > 0 and epoch % self.epochs == 0:
             K.set_value(self.model.optimizer.lr, lr)
             print("Updated learning rate from "+str(oldrate)+" to "+str(lr)+" on epoch "+str(epoch))
+
+class Beeper(Callback):
+
+    def __init__(self, batches):
+        self.batches = batches
+    
+    def on_batch_end(self, batch, logs={}):
+        if batch > 0 and batch % self.batches == 0:
+            winsound.Beep(440,300)
+        
+    def on_epoch_begin(self, epoch, logs=None):
+        
 
 
 

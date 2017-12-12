@@ -10,7 +10,7 @@ from keras.layers.convolutional import Conv2D
 from keras.layers.merge import Concatenate, Add
 from keras.layers.pooling import MaxPooling2D, AveragePooling2D
 from keras.layers.normalization import BatchNormalization
-from keras.callbacks import Callback, LearningRateScheduler, ModelCheckpoint, LambdaCallback, TensorBoard
+from keras.callbacks import Callback, LearningRateScheduler, ModelCheckpoint, LambdaCallback, TensorBoard, EarlyStopping
 from keras.optimizers import SGD
 import winsound
 import os
@@ -192,13 +192,16 @@ class AttentionVGG:
         self.name = name
         self.model = model
 
-    def StandardFit(self, datasetname=None, X=[], Y=[], transfer=False, beep=False):
+    def StandardFit(self, datasetname=None, X=[], Y=[], transfer=False, beep=False, min_delta=0, patience=3, validation_data=None):
         Y = keras.utils.to_categorical(Y,self.outputclasses)
         if datasetname==None:
             datasetname=self.datasetname
+        if os.path.isfile("weights/"+self.name+"-"+datasetname+" early.hdf5"):
+            print("Found early-stopped weights for "+self.name+"-"+datasetname)
+            return
         scheduler = LearningRateScaler(25, 0.5)
         startingepoch = 0
-        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+datasetname in x]))
+        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if (self.name+"-"+datasetname in x) & ("early" not in x)]))
         if len(pastepochs):
             if max(pastepochs) == 300:                
                 print("Found completely trained weights for "+self.name+"-"+datasetname)
@@ -214,8 +217,14 @@ class AttentionVGG:
         callbackslist = [scheduler, checkpoint, epochprint, tboardcb]
         if beep:
             callbackslist.append(Beeper(1))
-        self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
-        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+datasetname in x]))
+        if validation_data == None:
+            self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
+        else:
+            self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True,validation_data=(validation_data[0], keras.utils.to_categorical(validation_data[1],self.outputclasses)))
+            if min_delta != 0:
+                callbackslist.append(EarlyStopping(monitor='val_loss', min_delta=min_delta, patience=patience))        
+            self.model.save_weights("weights/"+self.name+"-"+datasetname+" early.hdf5")
+        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if (self.name+"-"+datasetname in x) & ("early" not in x)]))
         if max(pastepochs) > 290:
             for filenum in range(1,297):  #delete most of the lower weight files
                 try:
@@ -382,13 +391,16 @@ class AttentionRN:
         self.name = name
         self.model = model
     
-    def StandardFit(self, datasetname=None, X=[], Y=[], beep=False):
+    def StandardFit(self, datasetname=None, X=[], Y=[], beep=False, min_delta=0, patience=3, validation_data=None):
         Y = keras.utils.to_categorical(Y,self.outputclasses)
         if datasetname==None:
             datasetname=self.datasetname
+        if os.path.isfile("weights/"+self.name+"-"+datasetname+" early.hdf5"):
+            print("Found early-stopped weights for "+self.name+"-"+datasetname)
+            return
         scheduler = LearningRateScaler([60, 120, 160], 0.2)
         startingepoch = 0
-        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+datasetname in x]))
+        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if (self.name+"-"+datasetname in x) & ("early" not in x)]))
         if pastepochs:
             if max(pastepochs) == 200:
                 print("Found completely trained weights for "+self.name+"-"+datasetname)
@@ -401,7 +413,14 @@ class AttentionRN:
         callbackslist = [scheduler, checkpoint, epochprint, tboardcb]
         if beep:
             callbackslist.append(Beeper(1))
-        self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
+        if validation_data == None:
+            self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
+        else:
+            self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True,validation_data=(validation_data[0], keras.utils.to_categorical(validation_data[1],self.outputclasses)))
+            if min_delta != 0:
+                callbackslist.append(EarlyStopping(monitor='val_loss', min_delta=min_delta, patience=patience))
+            self.model.save_weights("weights/"+self.name+"-"+datasetname+" early.hdf5")
+        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if (self.name+"-"+datasetname in x) & ("early" not in x)]))
         if max(pastepochs) > 190:
             for filenum in range(1,197):
                 try:
@@ -422,7 +441,7 @@ class ParametrisedCompatibility(Layer):
         super(ParametrisedCompatibility, self).build(input_shape)
 
     def call(self, x):  # add l and g. Dot the sum with u.
-        return K.dot(K.map_fn(lambda lam: (lam[0]+lam[1]),elems=(x),dtype=None='float32'), self.u)
+        return K.dot(K.map_fn(lambda lam: (lam[0]+lam[1]),elems=(x),dtype='float32'), self.u)
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0][0], input_shape[0][1], input_shape[0][2])

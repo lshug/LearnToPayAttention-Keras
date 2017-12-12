@@ -15,9 +15,87 @@ from keras.optimizers import SGD
 import winsound
 import os
 
+class StandardVGG:
+    def __init__(self):
+        inp = Input(shape=(32, 32, 3))
+        regularizer = keras.regularizers.l2(0.0005)
+        x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv1', kernel_regularizer=regularizer)(inp)
+        x = Conv2D(64, (3, 3), activation='relu', padding='same', name='block1_conv2', kernel_regularizer=regularizer)(x)
+        x = MaxPooling2D((2, 2), strides=(2, 2), name='block1_pool')(x)
+
+        # Block 2
+        x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv1', kernel_regularizer=regularizer)(x)
+        x = Conv2D(128, (3, 3), activation='relu', padding='same', name='block2_conv2', kernel_regularizer=regularizer)(x)
+        x = MaxPooling2D((2, 2), strides=(2, 2), name='block2_pool')(x)
+
+        # Block 3
+        x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv1', kernel_regularizer=regularizer)(x)
+        x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv2', kernel_regularizer=regularizer)(x)
+        x = Conv2D(256, (3, 3), activation='relu', padding='same', name='block3_conv3', kernel_regularizer=regularizer)(x)
+        x = MaxPooling2D((2, 2), strides=(2, 2), name='block3_pool')(x)
+
+        # Block 4
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv1', kernel_regularizer=regularizer)(x)
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv2', kernel_regularizer=regularizer)(x)
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block4_conv3', kernel_regularizer=regularizer)(x)
+        x = MaxPooling2D((2, 2), strides=(2, 2), name='block4_pool')(x)
+
+        # Block 5
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv1', kernel_regularizer=regularizer)(x)
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv2', kernel_regularizer=regularizer)(x)
+        x = Conv2D(512, (3, 3), activation='relu', padding='same', name='block5_conv3', kernel_regularizer=regularizer)(x)
+        x = MaxPooling2D((2, 2), strides=(2, 2), name='block5_pool')(x)
+
+        x = Flatten(name='flatten')(x)
+        x = Dense(4096, activation='relu', name='fc1', kernel_regularizer=regularizer)(x)
+        x = Dense(4096, activation='relu', name='fc2', kernel_regularizer=regularizer)(x)
+        x = Dense(10, activation='softmax', name='predictions', kernel_regularizer=regularizer)(x)
+
+        self.model = Model(inp, x, name='vgg16')
+        self.name = "VGG16"
+        self.datasetname="cifar16"
+        
+        print("Generated "+self.name)
+
+        optimizer=SGD(lr=1, momentum=0.9, decay=0.0000001)
+        loss='categorical_crossentropy'
+        metrics=['accuracy']
+        self.model.compile(optimizer=optimizer, loss=loss, metrics=metrics)
     
+    def StandardFit(self, datasetname=None, X=[], Y=[], beep=False):
+        Y = keras.utils.to_categorical(Y,self.outputclasses)
+        if datasetname==None:
+            datasetname=self.datasetname
+        scheduler = LearningRateScaler(25, 0.5)
+        startingepoch = 0
+        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+datasetname in x]))
+        if len(pastepochs):
+            if max(pastepochs) == 300:                
+                print("Found completely trained weights for "+self.name+"-"+datasetname)
+                return
+            self.model.load_weights("weights/"+self.name+"-"+datasetname+" "+str(max(pastepochs))+".hdf5")
+            startingepoch = max(pastepochs)
+        tboardcb = TensorBoard(log_dir='./logs', histogram_freq=0, batch_size=3, write_graph=True, write_grads=False, write_images=False, embeddings_freq=0, embeddings_layer_names=None, embeddings_metadata=None)
+        checkpoint = ModelCheckpoint("weights/"+self.name+"-"+datasetname+" {epoch}.hdf5", save_weights_only=True)
+        epochprint = LambdaCallback(on_epoch_end=lambda epoch, logs: print("Passed epoch "+str(epoch)))
+        callbackslist = [scheduler, checkpoint, epochprint, tboardcb]
+        if beep:
+            callbackslist.append(Beeper(1))
+        self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
+        pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if self.name+"-"+datasetname in x]))
+        if max(pastepochs) > 290:
+            for filenum in range(1,297):  #delete most of the lower weight files
+                try:
+                    os.remove("weights/"+self.name+"-"+datasetname+" "+str(filenum)+".hdf5")
+                except OSError:
+                    pass
+        return self.model
+
+
+
+
 class AttentionVGG:
-    def __init__(self, att='att1', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=100, weight_decay=0.0005, optimizer=SGD(lr=1, momentum=0.9, decay=0.0000001), loss='categorical_crossentropy', metrics=['accuracy']):
+    def __init__(self, att='att1', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=100, weight_decay=0.0005, optimizer=SGD(lr=0.01, momentum=0.9, decay=0.0000001), loss='categorical_crossentropy', metrics=['accuracy']):
         inp = Input(shape=(height, width, channels))
         regularizer = keras.regularizers.l2(weight_decay)
         self.datasetname = datasetname
@@ -57,7 +135,7 @@ class AttentionVGG:
             c1 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp1')([l1, g])  # batch*x*y
         flatc1 = Flatten(name='flatc1')(c1)  # batch*xy
         a1 = Activation('softmax', name='softmax1')(flatc1)  # batch*xy
-        reshaped1 = Reshape((-1,512), name='reshape1')(l1)  # batch*xy*512. Not the problem.    
+        reshaped1 = Reshape((-1,512), name='reshape1')(l1)  # batch*xy*512.
         g1 = Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0], 1), lam[1]), 1), name='g1')([a1, reshaped1])  # batch*512.
 
             
@@ -168,7 +246,7 @@ class AttentionVGG:
             return 0.003125
     
 class AttentionRN:
-    def __init__(self, att='att2', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=100, weight_decay=0.0005, optimizer=SGD(lr=0.1, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy']):
+    def __init__(self, att='att2', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=100, weight_decay=0.0005, optimizer=SGD(lr=0.01, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy']):
         inp = Input(shape=(height, width, channels)) #batch*x*y*3
         regularizer = keras.regularizers.l2(weight_decay)
         self.datasetname = datasetname
@@ -344,7 +422,7 @@ class ParametrisedCompatibility(Layer):
         super(ParametrisedCompatibility, self).build(input_shape)
 
     def call(self, x):  # add l and g. Dot the sum with u.
-        return K.dot((lam[0]+lam[1]), self.u)
+        return K.dot(K.map_fn(lambda lam: (lam[0]+lam[1]),elems=(x),dtype=None='float32'), self.u)
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0][0], input_shape[0][1], input_shape[0][2])
@@ -380,5 +458,4 @@ class Beeper(Callback):
 
 
 if __name__ == "__main__":
-    testmodel = AttentionRN(att='att2', gmode='concat', compatibilityfunction='pc', datasetname="randomset", height=32, width=32, channels=3, outputclasses=10)
-    testmodel = AttentionVGG(att='att2', gmode='concat', compatibilityfunction='pc', datasetname="randomset", height=32, width=32, channels=3, outputclasses=10)
+    testmodel = StandardVGG()

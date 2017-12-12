@@ -57,7 +57,7 @@ class AttentionVGG:
             c1 = Lambda(lambda lam: K.squeeze(K.map_fn(lambda xy: K.dot(xy[0], xy[1]), elems=(lam[0], K.expand_dims(lam[1], -1)), dtype='float32'), 3), name='cdp1')([l1, g])  # batch*x*y
         flatc1 = Flatten(name='flatc1')(c1)  # batch*xy
         a1 = Activation('softmax', name='softmax1')(flatc1)  # batch*xy
-        reshaped1 = Reshape((-1,512), name='reshape1')(l1)  # batch*xy*512.
+        reshaped1 = Reshape((-1,512), name='reshape1')(l1)  # batch*xy*512. Not the problem.    
         g1 = Lambda(lambda lam: K.squeeze(K.batch_dot(K.expand_dims(lam[0], 1), lam[1]), 1), name='g1')([a1, reshaped1])  # batch*512.
 
             
@@ -324,8 +324,8 @@ class AttentionRN:
         if beep:
             callbackslist.append(Beeper(1))
         self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
-        if max(pastepochs) > 290:
-            for filenum in range(1,297):
+        if max(pastepochs) > 190:
+            for filenum in range(1,197):
                 try:
                     os.remove("weights/"+self.name+"-"+datasetname+" "+str(filenum)+".hdf5")
                 except OSError:
@@ -343,8 +343,8 @@ class ParametrisedCompatibility(Layer):
         self.u = self.add_weight(name='u', shape=(input_shape[0][3], 1), initializer='uniform', regularizer=self.regularizer, trainable=True)
         super(ParametrisedCompatibility, self).build(input_shape)
 
-    def call(self, x):  # add l and g together with map_fn. Dot the sum with u.
-        return K.dot(K.map_fn(lambda lam: lam[0]+lam[1], elems=(x), dtype='float32'), self.u)
+    def call(self, x):  # add l and g. Dot the sum with u.
+        return K.dot((lam[0]+lam[1]), self.u)
 
     def compute_output_shape(self, input_shape):
         return (input_shape[0][0], input_shape[0][1], input_shape[0][2])

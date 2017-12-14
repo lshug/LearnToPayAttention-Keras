@@ -91,9 +91,6 @@ class StandardVGG:
                     pass
         return self.model
 
-
-
-
 class AttentionVGG:
     def VGGBlock(self, x, regularizer = None, batchnorm = False):
         if batchnorm:
@@ -185,8 +182,10 @@ class AttentionVGG:
             g = Dense(512, activation='relu', kernel_regularizer=regularizer, name='globalg')(x)  # batch*512
             return (g, local1, local2, local3)
 
-    def __init__(self, att='att1', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=100, batchnorm=False, weight_decay=0.0005, optimizer=SGD(lr=0.01, momentum=0.9, decay=0.0000001), loss='categorical_crossentropy', metrics=['accuracy']):
+    def __init__(self, att='att1', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=100, batchnorm=False, batchnormalizeinput=False, weight_decay=0.0005, optimizer=SGD(lr=0.01, momentum=0.9, decay=0.0000001), loss='categorical_crossentropy', metrics=['accuracy']):
         inp = Input(shape=(height, width, channels))
+        if batchnormalizeinput:
+            inp = BatchNormalization()(input)
         regularizer = keras.regularizers.l2(weight_decay)
         self.datasetname = datasetname
         self.outputclasses=outputclasses

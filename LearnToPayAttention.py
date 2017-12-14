@@ -10,7 +10,7 @@ from keras.layers.convolutional import Conv2D
 from keras.layers.merge import Concatenate, Add
 from keras.layers.pooling import MaxPooling2D, AveragePooling2D
 from keras.layers.normalization import BatchNormalization
-from keras.callbacks import Callback, LearningRateScheduler, ModelCheckpoint, LambdaCallback, TensorBoard, EarlyStopping
+from keras.callbacks import Callback, LearningRateScheduler, ModelCheckpoint, LambdaCallback, TensorBoard, EarlyStopping, ReduceLROnPlateau
 from keras.optimizers import SGD
 import winsound
 import os
@@ -256,7 +256,7 @@ class AttentionVGG:
         self.name = name
         self.model = model
 
-    def StandardFit(self, datasetname=None, X=[], Y=[], transfer=False, beep=False, min_delta=None, patience=3, validation_data=None):
+    def StandardFit(self, datasetname=None, X=[], Y=[], transfer=False, beep=False, min_delta=None, patience=7, validation_data=None, lrplateaufactor=None, lrplateaupatience=4):
         Y = keras.utils.to_categorical(Y,self.outputclasses)
         if datasetname==None:
             datasetname=self.datasetname
@@ -273,7 +273,10 @@ class AttentionVGG:
             self.model.load_weights("weights/"+self.name+"-"+datasetname+" "+str(max(pastepochs))+".hdf5")
             startingepoch = max(pastepochs)
         elif transfer:
-            self.model.load_weights("weights/"+self.name+"-cifar100 300.hdf5", by_name=True)
+            if os.path.isfile("weights/"+self.name+"-"+datasetname+" early.hdf5"):
+                self.model.load_weights("weights/"+self.name+"-"+datasetname+" early.hdf5", by_name=True)
+            else:
+                self.model.load_weights("weights/"+self.name+"-cifar100 300.hdf5", by_name=True)
             scheduler = LearningRateScheduler(transfer_schedule)
         tboardcb = TensorBoard(log_dir='./logs', histogram_freq=0, batch_size=3, write_graph=True, write_grads=False, write_images=False, embeddings_freq=0, embeddings_layer_names=None, embeddings_metadata=None)
         checkpoint = ModelCheckpoint("weights/"+self.name+"-"+datasetname+" {epoch}.hdf5", save_weights_only=True)
@@ -287,6 +290,8 @@ class AttentionVGG:
             self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True,validation_data=(validation_data[0], keras.utils.to_categorical(validation_data[1],self.outputclasses)))
             if min_delta != None:
                 callbackslist.append(EarlyStopping(monitor='val_acc', min_delta=min_delta, patience=patience))        
+            if lrplateaufactor != None:
+                callbackslist.append(ReduceLROnPlateau(monitor='val_acc', factor = lrplateaufactor, patience = lrplateaupatience))
             self.model.save_weights("weights/"+self.name+"-"+datasetname+" early.hdf5")
         pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if (self.name+"-"+datasetname in x) & ("early" not in x)]))
         if max(pastepochs) > 290:
@@ -458,7 +463,7 @@ class AttentionRN:
         self.name = name
         self.model = model
     
-    def StandardFit(self, datasetname=None, X=[], Y=[], beep=False, min_delta=None, patience=3, validation_data=None):
+    def StandardFit(self, datasetname=None, X=[], Y=[], beep=False, min_delta=None, patience=3, validation_data=None, , lrplateaufactor=None, lrplateaupatience=4):
         Y = keras.utils.to_categorical(Y,self.outputclasses)
         if datasetname==None:
             datasetname=self.datasetname
@@ -486,6 +491,8 @@ class AttentionRN:
             self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True,validation_data=(validation_data[0], keras.utils.to_categorical(validation_data[1],self.outputclasses)))
             if min_delta != None:
                 callbackslist.append(EarlyStopping(monitor='val_acc', min_delta=min_delta, patience=patience))
+            if lrplateaufactor != None:
+                callbackslist.append(ReduceLROnPlateau(monitor='val_acc', factor = lrplateaufactor, patience = lrplateaupatience))
             self.model.save_weights("weights/"+self.name+"-"+datasetname+" early.hdf5")
         pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if (self.name+"-"+datasetname in x) & ("early" not in x)]))
         if max(pastepochs) > 190:

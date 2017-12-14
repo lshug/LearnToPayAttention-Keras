@@ -24,7 +24,7 @@ ycubtest = np.load("datasets/ycubtest.npy")
 
 vggatt3concatpcCIFAR10 = AttentionVGG(att='att3', gmode='concat', compatibilityfunction='pc', height=32, width=32, channels=3, outputclasses=10, batchnorm = True).StandardFit("cifar10",x10,y10,beep=True, min_delta=0, validation_data=(x10test,y10test))
 vggatt3concatpcCIFAR100 = AttentionVGG(att='att3', gmode='concat', compatibilityfunction='pc', height=32, width=32, channels=3, outputclasses=100, batchnorm = True).StandardFit("cifar100",x100,y100,beep=True, min_delta=0, validation_data=(x100test,y100test))
-vggatt3concatpcSVHN = AttentionVGG(att='att3', gmode='concat', compatibilityfunction='pc', height=32, width=32, channels=3, outputclasses=10, batchnorm = True).StandardFit("svhn",xsvhn,ysvhn,beep=True, min_delta=0, validation_data=(xsvhtest,ysvhntest))
+vggatt3concatpcSVHN = AttentionVGG(att='att3', gmode='concat', compatibilityfunction='pc', height=32, width=32, channels=3, outputclasses=10, optimizer=SGD(lr=0.01, momentum=0.9, decay=0.0000001), batchnorm = True).StandardFit("svhn",xsvhn,ysvhn,beep=True, min_delta=0, validation_data=(xsvhtest,ysvhntest),patience=3, lrplateaufactor=0.1)
 
 vggatt2concatpcCIFAR10 = AttentionVGG(att='att2', gmode='concat', compatibilityfunction='pc', height=32, width=32, channels=3, outputclasses=10, batchnorm = True).StandardFit("cifar10",x10,y10,beep=True, min_delta=0, validation_data=(x10test,y10test))
 vggatt2concatpcCUB = AttentionVGG(att='att2', gmode='concat', compatibilityfunction='pc', height=32, width=32, channels=3, outputclasses=10, batchnorm = True).StandardFit("cub2002011",xcub,ycub,True,beep=True, min_delta=0, validation_data=(xcubtest,ycubtest))

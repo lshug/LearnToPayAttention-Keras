@@ -95,39 +95,103 @@ class StandardVGG:
 
 
 class AttentionVGG:
-    def __init__(self, att='att1', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=100, weight_decay=0.0005, optimizer=SGD(lr=0.01, momentum=0.9, decay=0.0000001), loss='categorical_crossentropy', metrics=['accuracy']):
+    def VGGBlock(self, x, regularizer = None, batchnorm = False):
+        if batchnorm:
+            x = Conv2D(64, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv1')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(64, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv2')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+
+            x = Conv2D(128, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv3')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(128, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv4')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+
+            x = Conv2D(256, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv5')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(256, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv6')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(256, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv7')(x)
+            x = BatchNormalization()(x)
+            local1 = Activation('relu')(x)  # batch*x*y*channel
+            x = MaxPooling2D((2, 2), strides=(2, 2), name='pool1')(x)
+
+            x = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv8')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv9')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv10')(x)
+            x = BatchNormalization()(x)
+            local2 = Activation('relu')(x)
+            x = MaxPooling2D((2, 2), strides=(2, 2), name='pool2')(local2)
+
+            x = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv11')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv12')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv13')(x)
+            x = BatchNormalization()(x)
+            local3 = Activation('relu')(x)
+            x = MaxPooling2D((2, 2), strides=(2, 2), name='pool3')(local3)
+
+            x = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv14')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = MaxPooling2D((2, 2), strides=(2, 2), name='pool4')(x)
+            x = Conv2D(512, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv15')(x)
+            x = BatchNormalization()(x)
+            x = Activation('relu')(x)
+            x = MaxPooling2D((2, 2), strides=(2, 2), name='pool5')(x)
+            x = Flatten(name='pregflatten')(x)
+            g = Dense(512, activation='relu', kernel_regularizer=regularizer, name='globalg')(x)  # batch*512
+            return (g, local1, local2, local3)
+        else:            
+            x = Conv2D(64, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv1')(x)
+            x = Conv2D(64, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv2')(x)
+
+            x = Conv2D(128, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv3')(x)
+            x = Conv2D(128, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv4')(x)
+
+            x = Conv2D(256, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv5')(x)
+            x = Conv2D(256, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv6')(x)
+            local1 = Conv2D(256, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv7')(x)  # batch*x*y*channel
+            x = MaxPooling2D((2, 2), strides=(2, 2), name='pool1')(local1)
+
+            x = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv8')(x)
+            x = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv9')(x)
+            local2 = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv10')(x)
+            x = MaxPooling2D((2, 2), strides=(2, 2), name='pool2')(local2)
+
+            x = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv11')(x)
+            x = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv12')(x)
+            local3 = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv13')(x)
+            x = MaxPooling2D((2, 2), strides=(2, 2), name='pool3')(local3)
+
+            x = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv14')(x)
+            x = MaxPooling2D((2, 2), strides=(2, 2), name='pool4')(x)
+            x = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv15')(x)
+            x = MaxPooling2D((2, 2), strides=(2, 2), name='pool5')(x)
+            x = Flatten(name='pregflatten')(x)
+            g = Dense(512, activation='relu', kernel_regularizer=regularizer, name='globalg')(x)  # batch*512
+            return (g, local1, local2, local3)
+
+    def __init__(self, att='att1', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=100, batchnorm=False, weight_decay=0.0005, optimizer=SGD(lr=0.01, momentum=0.9, decay=0.0000001), loss='categorical_crossentropy', metrics=['accuracy']):
         inp = Input(shape=(height, width, channels))
         regularizer = keras.regularizers.l2(weight_decay)
         self.datasetname = datasetname
         self.outputclasses=outputclasses
 
-        x = Conv2D(64, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv1')(inp)
-        x = Conv2D(64, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv2')(x)
-
-        x = Conv2D(128, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv3')(x)
-        x = Conv2D(128, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv4')(x)
-
-        x = Conv2D(256, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv5')(x)
-        x = Conv2D(256, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv6')(x)
-        local1 = Conv2D(256, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv7')(x)  # batch*x*y*channel
-        x = MaxPooling2D((2, 2), strides=(2, 2), name='pool1')(local1)
-
-        x = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv8')(x)
-        x = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv9')(x)
-        local2 = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv10')(x)
-        x = MaxPooling2D((2, 2), strides=(2, 2), name='pool2')(local2)
-
-        x = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv11')(x)
-        x = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv12')(x)
-        local3 = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv13')(x)
-        x = MaxPooling2D((2, 2), strides=(2, 2), name='pool3')(local3)
-
-        x = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv14')(x)
-        x = MaxPooling2D((2, 2), strides=(2, 2), name='pool4')(x)
-        x = Conv2D(512, (3, 3), activation='relu', padding='same', kernel_regularizer=regularizer, name='conv15')(x)
-        x = MaxPooling2D((2, 2), strides=(2, 2), name='pool5')(x)
-        x = Flatten(name='pregflatten')(x)
-        g = Dense(512, activation='relu', kernel_regularizer=regularizer, name='globalg')(x)  # batch*512
+        (g, local1, local2, local3) = self.VGGBlock(inp,regularizer,batchnorm)
 
         l1 = Dense(512, kernel_regularizer=regularizer, name='l1connectordense')(local1)  # batch*x*y*512
         c1 = ParametrisedCompatibility(kernel_regularizer=regularizer, name='cpc1')([l1, g])  # batch*x*y
@@ -192,7 +256,7 @@ class AttentionVGG:
         self.name = name
         self.model = model
 
-    def StandardFit(self, datasetname=None, X=[], Y=[], transfer=False, beep=False, min_delta=0, patience=3, validation_data=None):
+    def StandardFit(self, datasetname=None, X=[], Y=[], transfer=False, beep=False, min_delta=None, patience=3, validation_data=None):
         Y = keras.utils.to_categorical(Y,self.outputclasses)
         if datasetname==None:
             datasetname=self.datasetname
@@ -221,8 +285,8 @@ class AttentionVGG:
             self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
         else:
             self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True,validation_data=(validation_data[0], keras.utils.to_categorical(validation_data[1],self.outputclasses)))
-            if min_delta != 0:
-                callbackslist.append(EarlyStopping(monitor='val_loss', min_delta=min_delta, patience=patience))        
+            if min_delta != None:
+                callbackslist.append(EarlyStopping(monitor='val_acc', min_delta=min_delta, patience=patience))        
             self.model.save_weights("weights/"+self.name+"-"+datasetname+" early.hdf5")
         pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if (self.name+"-"+datasetname in x) & ("early" not in x)]))
         if max(pastepochs) > 290:
@@ -232,6 +296,9 @@ class AttentionVGG:
                 except OSError:
                     pass
         return self.model
+
+    
+
 
     def transfer_schedule(epoch):
             if epoch < 30:
@@ -391,7 +458,7 @@ class AttentionRN:
         self.name = name
         self.model = model
     
-    def StandardFit(self, datasetname=None, X=[], Y=[], beep=False, min_delta=0, patience=3, validation_data=None):
+    def StandardFit(self, datasetname=None, X=[], Y=[], beep=False, min_delta=None, patience=3, validation_data=None):
         Y = keras.utils.to_categorical(Y,self.outputclasses)
         if datasetname==None:
             datasetname=self.datasetname
@@ -417,8 +484,8 @@ class AttentionRN:
             self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
         else:
             self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True,validation_data=(validation_data[0], keras.utils.to_categorical(validation_data[1],self.outputclasses)))
-            if min_delta != 0:
-                callbackslist.append(EarlyStopping(monitor='val_loss', min_delta=min_delta, patience=patience))
+            if min_delta != None:
+                callbackslist.append(EarlyStopping(monitor='val_acc', min_delta=min_delta, patience=patience))
             self.model.save_weights("weights/"+self.name+"-"+datasetname+" early.hdf5")
         pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if (self.name+"-"+datasetname in x) & ("early" not in x)]))
         if max(pastepochs) > 190:

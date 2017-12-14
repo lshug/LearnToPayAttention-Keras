@@ -462,7 +462,7 @@ class AttentionRN:
         self.name = name
         self.model = model
     
-    def StandardFit(self, datasetname=None, X=[], Y=[], beep=False, min_delta=None, patience=3, validation_data=None, , lrplateaufactor=None, lrplateaupatience=4):
+    def StandardFit(self, datasetname=None, X=[], Y=[], beep=False, min_delta=None, patience=3, validation_data=None, lrplateaufactor=None, lrplateaupatience=4):
         Y = keras.utils.to_categorical(Y,self.outputclasses)
         if datasetname==None:
             datasetname=self.datasetname

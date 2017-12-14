@@ -184,13 +184,14 @@ class AttentionVGG:
 
     def __init__(self, att='att1', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=100, batchnorm=False, batchnormalizeinput=False, weight_decay=0.0005, optimizer=SGD(lr=0.01, momentum=0.9, decay=0.0000001), loss='categorical_crossentropy', metrics=['accuracy']):
         inp = Input(shape=(height, width, channels))
+        input = inp
         if batchnormalizeinput:
-            inp = BatchNormalization()(inp)
+            input = BatchNormalization()(input)
         regularizer = keras.regularizers.l2(weight_decay)
         self.datasetname = datasetname
         self.outputclasses=outputclasses
 
-        (g, local1, local2, local3) = self.VGGBlock(inp,regularizer,batchnorm)
+        (g, local1, local2, local3) = self.VGGBlock(input,regularizer,batchnorm)
 
         l1 = Dense(512, kernel_regularizer=regularizer, name='l1connectordense')(local1)  # batch*x*y*512
         c1 = ParametrisedCompatibility(kernel_regularizer=regularizer, name='cpc1')([l1, g])  # batch*x*y

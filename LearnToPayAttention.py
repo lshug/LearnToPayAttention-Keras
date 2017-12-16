@@ -15,6 +15,8 @@ from keras.optimizers import SGD
 import winsound
 import os
 
+
+
 class StandardVGG:
     def __init__(self):
         inp = Input(shape=(32, 32, 3))
@@ -92,6 +94,7 @@ class StandardVGG:
         return self.model
 
 class AttentionVGG:
+    
     def VGGBlock(self, x, regularizer = None, batchnorm = False):
         if batchnorm:
             x = Conv2D(64, (3, 3), padding='same', kernel_regularizer=regularizer, name='conv1')(x)
@@ -182,7 +185,7 @@ class AttentionVGG:
             g = Dense(512, activation='relu', kernel_regularizer=regularizer, name='globalg')(x)  # batch*512
             return (g, local1, local2, local3)
 
-    def __init__(self, att='att1', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=100, batchnorm=False, batchnormalizeinput=False, weight_decay=0.0005, optimizer=SGD(lr=0.01, momentum=0.9, decay=0.0000001), loss='categorical_crossentropy', metrics=['accuracy']):
+    def __init__(self, att='att3', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=10, batchnorm=True, batchnormalizeinput=True, weight_decay=0.0005, optimizer=SGD(lr=0.01, momentum=0.9, decay=0.0000001), loss='categorical_crossentropy', metrics=['accuracy']):
         inp = Input(shape=(height, width, channels))
         input = inp
         if batchnormalizeinput:
@@ -256,14 +259,14 @@ class AttentionVGG:
         self.name = name
         self.model = model
 
-    def StandardFit(self, datasetname=None, X=[], Y=[], transfer=False, beep=False, min_delta=None, patience=7, validation_data=None, lrplateaufactor=None, lrplateaupatience=4):
+    def StandardFit(self, datasetname=None, X=[], Y=[], transfer=False, beep=False, initial_lr=0.01, min_delta=None, patience=7, validation_data=None, lrplateaufactor=None, lrplateaupatience=4):
         Y = keras.utils.to_categorical(Y,self.outputclasses)
         if datasetname==None:
             datasetname=self.datasetname
         if os.path.isfile("weights/"+self.name+"-"+datasetname+" early.hdf5"):
             print("Found early-stopped weights for "+self.name+"-"+datasetname)
             return
-        scheduler = LearningRateScaler(25, 0.5)
+        scheduler = LearningRateScaler(25, 0.5, initial_lr)
         startingepoch = 0
         pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if (self.name+"-"+datasetname in x) & ("early" not in x)]))
         if len(pastepochs):
@@ -287,11 +290,11 @@ class AttentionVGG:
         if validation_data == None:
             self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
         else:
-            self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True,validation_data=(validation_data[0], keras.utils.to_categorical(validation_data[1],self.outputclasses)))
             if min_delta != None:
                 callbackslist.append(EarlyStopping(monitor='val_acc', min_delta=min_delta, patience=patience))        
             if lrplateaufactor != None:
-                callbackslist.append(ReduceLROnPlateau(monitor='val_acc', factor = lrplateaufactor, patience = lrplateaupatience))
+                callbackslist.append(ReduceLROnPlateau(monitor='loss', factor = lrplateaufactor, patience = lrplateaupatience))
+            self.model.fit(X, Y, 128, 300, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True,validation_data=(validation_data[0], keras.utils.to_categorical(validation_data[1],self.outputclasses)))            
             self.model.save_weights("weights/"+self.name+"-"+datasetname+" early.hdf5")
         pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if (self.name+"-"+datasetname in x) & ("early" not in x)]))
         if max(pastepochs) > 290:
@@ -327,7 +330,7 @@ class AttentionVGG:
             return 0.003125
     
 class AttentionRN:
-    def __init__(self, att='att2', gmode='concat', compatibilityfunction='pc', datasetname="cifar100", height=32, width=32, channels=3, outputclasses=100, weight_decay=0.0005, optimizer=SGD(lr=0.01, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy']):
+    def __init__(self, att='att2', gmode='concat', compatibilityfunction='pc', datasetname="cifar10", height=32, width=32, channels=3, outputclasses=100, weight_decay=0.0005, optimizer=SGD(lr=0.01, momentum=0.9), loss='categorical_crossentropy', metrics=['accuracy']):
         inp = Input(shape=(height, width, channels)) #batch*x*y*3
         regularizer = keras.regularizers.l2(weight_decay)
         self.datasetname = datasetname
@@ -463,14 +466,14 @@ class AttentionRN:
         self.name = name
         self.model = model
     
-    def StandardFit(self, datasetname=None, X=[], Y=[], beep=False, min_delta=None, patience=3, validation_data=None, lrplateaufactor=None, lrplateaupatience=4):
+    def StandardFit(self, datasetname=None, X=[], Y=[], beep=False, initial_lr=0.01, min_delta=None, patience=3, validation_data=None, lrplateaufactor=None, lrplateaupatience=4):
         Y = keras.utils.to_categorical(Y,self.outputclasses)
         if datasetname==None:
             datasetname=self.datasetname
         if os.path.isfile("weights/"+self.name+"-"+datasetname+" early.hdf5"):
             print("Found early-stopped weights for "+self.name+"-"+datasetname)
             return
-        scheduler = LearningRateScaler([60, 120, 160], 0.2)
+        scheduler = LearningRateScaler([60, 120, 160], 0.2, initial_lr)
         startingepoch = 0
         pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if (self.name+"-"+datasetname in x) & ("early" not in x)]))
         if pastepochs:
@@ -488,11 +491,11 @@ class AttentionRN:
         if validation_data == None:
             self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True)
         else:
-            self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True,validation_data=(validation_data[0], keras.utils.to_categorical(validation_data[1],self.outputclasses)))
             if min_delta != None:
                 callbackslist.append(EarlyStopping(monitor='val_acc', min_delta=min_delta, patience=patience))
             if lrplateaufactor != None:
-                callbackslist.append(ReduceLROnPlateau(monitor='val_acc', factor = lrplateaufactor, patience = lrplateaupatience))
+                callbackslist.append(ReduceLROnPlateau(monitor='acc', factor = lrplateaufactor, patience = lrplateaupatience))
+            self.model.fit(X, Y, 64, 200, callbacks=callbackslist, initial_epoch=startingepoch,shuffle=True,validation_data=(validation_data[0], keras.utils.to_categorical(validation_data[1],self.outputclasses)))    
             self.model.save_weights("weights/"+self.name+"-"+datasetname+" early.hdf5")
         pastepochs = list(map(int, [x.replace(".hdf5", "").replace(self.name+"-"+datasetname, "").replace(" ", "") for x in os.listdir("weights") if (self.name+"-"+datasetname in x) & ("early" not in x)]))
         if max(pastepochs) > 190:
@@ -522,23 +525,42 @@ class ParametrisedCompatibility(Layer):
 
 
 class LearningRateScaler(Callback):
-
-    def __init__(self, epochs, multiplier):
+    
+    def __init__(self, epochs, multiplier, initial_lr=None):
         self.multiplier = multiplier
         self.epochs = epochs
-        
+        self.initial_lr = initial_lr
+        self.startingepoch = True
+    
+    def on_train_begin(self, logs=None):
+        if self.initial_lr == None:
+            self.initial_lr = K.get_value(self.model.optimizer.lr)
+        print("Initial lr="+str(self.initial_lr))
+
     def on_epoch_begin(self, epoch, logs=None):
         if not hasattr(self.model.optimizer, 'lr'):
             raise ValueError('Optimizer must have a "lr" attribute.')
-        oldrate = K.get_value(self.model.optimizer.lr)
-        lr = oldrate*self.multiplier
-        if isinstance(self.epochs, list):
-            if epoch>0 and epoch in self.epochs:
-                K.set_value(self.model.optimizer.lr, lr)
-                print("Updated learning rate from "+str(oldrate)+" to "+str(lr)+" on epoch "+str(epoch))    
-        elif epoch > 0 and epoch % self.epochs == 0:
+        print("Current lr: " + str(K.get_value(self.model.optimizer.lr)))
+        lr = self.initial_lr
+        if (epoch > 0 and epoch % self.epochs == 0) or self.startingepoch:
+            for i in range(0, epoch // self.epochs):
+                lr = lr * self.multiplier
             K.set_value(self.model.optimizer.lr, lr)
-            print("Updated learning rate from "+str(oldrate)+" to "+str(lr)+" on epoch "+str(epoch))
+            print("Updated learning rate to "+str(lr))
+            self.startingepoch = False
+        elif isinstance(self.epochs, list):
+            if epoch>0 and epoch in self.epochs.sort():
+                for i in range(0, self.epochs.sort().index(epoch)+1):
+                    lr = lr * self.multiplier
+                K.set_value(self.model.optimizer.lr, lr)
+                print("Updated learning rate to "+str(lr))    
+        
+    
+    def on_epoch_end(self, epoch, logs=None):
+        startingepoch = False
+    
+        
+
 
 class Beeper(Callback):
 
@@ -547,7 +569,7 @@ class Beeper(Callback):
     
     def on_batch_end(self, batch, logs={}):
         if batch > 0 and batch % self.batches == 0:
-            winsound.Beep(440,300)
+            winsound.Beep(440,150)
 
 
 if __name__ == "__main__":
